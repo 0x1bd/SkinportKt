@@ -1,4 +1,4 @@
-package io.github.kvxd.skinportkt
+package org.kvxd.skinport
 
 data class SkinportAPISecret(
     val clientId: String,

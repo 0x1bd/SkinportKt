@@ -5,17 +5,21 @@ plugins {
 }
 
 group = "io.github.0x1bd"
-version = "0.1.0"
+version = "0.2.0"
 
 repositories {
     mavenCentral()
 }
 
 dependencies {
+    implementation("io.ktor:ktor-client-encoding:3.1.3")
+    implementation("io.ktor:ktor-client-okhttp-jvm:3.1.3")
+    implementation("io.ktor:ktor-client-auth:3.1.3")
     testImplementation(kotlin("test"))
 
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("com.squareup.okhttp3:okhttp-brotli:4.12.0")
+    implementation(libs.bundles.ktor.client)
+    implementation(libs.logback.classic)
+    implementation(libs.kotlinx.datetime)
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
 }

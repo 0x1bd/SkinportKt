@@ -125,7 +125,6 @@ class SkinportClient(
         val cacheKey = if (appId != null) "outOfStock:$appId" else "outOfStock"
 
         cache?.get(cacheKey, ListSerializer(OutOfStockItem.serializer()))?.let {
-            println("using cache for oos")
             return it
         }
 

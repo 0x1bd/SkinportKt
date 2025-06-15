@@ -1,5 +1,4 @@
 import kotlinx.coroutines.runBlocking
-import org.kvxd.skinport.SkinportException
 import org.kvxd.skinport.dsl.skinportClient
 import kotlin.test.Ignore
 import kotlin.test.Test
@@ -10,7 +9,9 @@ import kotlin.test.assertTrue
 @Ignore
 class EndpointTest {
 
-    private val client = skinportClient { }
+    private val client = skinportClient {
+        fileCache()
+    }
 
     @Test
     fun testItems() = runBlocking {
@@ -27,16 +28,16 @@ class EndpointTest {
     }
 
     @Test
-    fun testOutOfSale() = runBlocking {
+    fun testOutOfStock() = runBlocking {
         assertTrue {
-            client.outOfSalesItems().isNotEmpty()
+            client.outOfStockItems().isNotEmpty()
         }
     }
 
     @Test
     fun testTransactions() {
         runBlocking {
-            assertFailsWith<SkinportException> {
+            assertFailsWith<IllegalArgumentException> {
                 client.transactions()
             }
         }

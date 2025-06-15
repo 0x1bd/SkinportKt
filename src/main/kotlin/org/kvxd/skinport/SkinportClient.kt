@@ -10,15 +10,18 @@ import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
+import kotlinx.serialization.builtins.ListSerializer
 import okhttp3.OkHttpClient
 import okhttp3.brotli.BrotliInterceptor
 import org.jetbrains.annotations.Range
+import org.kvxd.skinport.cache.SkinportCache
 import org.kvxd.skinport.models.*
 
 private const val BASE_ENDPOINT = "https://api.skinport.com/v1/"
 
 class SkinportClient(
-    private val apiSecret: SkinportAPISecret
+    private val apiSecret: SkinportAPISecret?,
+    private val cache: SkinportCache?
 ) {
 
     private val client: HttpClient = HttpClient(OkHttp) {
@@ -39,14 +42,21 @@ class SkinportClient(
         install(createErrorPlugin())
 
         install(Auth) {
-            basic {
-                credentials {
-                    BasicAuthCredentials(apiSecret.clientId, apiSecret.clientSecret)
-                }
-                sendWithoutRequest { request ->
-                    request.url.encodedPath.contains("/account/")
+            if (apiSecret != null) {
+                basic {
+                    credentials {
+                        BasicAuthCredentials(apiSecret.clientId, apiSecret.clientSecret)
+                    }
+                    sendWithoutRequest { request ->
+                        request.url.encodedPath.contains("/account/")
+                    }
                 }
             }
+        }
+
+        install(HttpRequestRetry) {
+            retryOnServerErrors(maxRetries = 3)
+            exponentialDelay()
         }
     }
 
@@ -54,17 +64,29 @@ class SkinportClient(
      * Retrieves data for a given item with pricing data from the last 24 hours.
      */
     suspend fun items(
-        appId: Int = 730,
-        currency: Currency = Currency.EUR,
-        tradable: Boolean = false
+        appId: Int? = null,
+        tradable: Boolean? = null
     ): List<Item> {
-        val response = client.get(BASE_ENDPOINT + "items") {
-            parameter("app_id", appId)
-            parameter("currency", currency)
-            parameter("tradable", tradable)
+        val cacheKey = buildString {
+            append("items")
+            if (appId != null) append(":appId=$appId")
+            if (tradable != null) append(":tradable=$tradable")
         }
 
-        return response.body()
+        cache?.get(cacheKey, ListSerializer(Item.serializer()))?.let {
+            return it
+        }
+
+        val response = client.get(BASE_ENDPOINT + "items") {
+            if (appId != null)
+                parameter("app_id", appId)
+            if (tradable != null)
+                parameter("tradable", tradable)
+        }
+
+        val result: List<Item> = response.body()
+        cache?.put(cacheKey, result, ListSerializer(Item.serializer()))
+        return result
     }
 
     /**
@@ -72,33 +94,51 @@ class SkinportClient(
      */
     suspend fun salesHistory(
         marketHashName: String? = null,
-        appId: Int = 730,
-        currency: Currency = Currency.EUR
+        appId: Int? = null,
     ): List<SalesHistoryItem> {
+        val cacheKey = buildString {
+            append("salesHistory")
+            if (marketHashName != null) append(":$marketHashName")
+            if (appId != null) append(":$appId")
+        }
+
+        cache?.get(cacheKey, ListSerializer(SalesHistoryItem.serializer()))?.let {
+            return it
+        }
+
         val response = client.get(BASE_ENDPOINT + "sales/history") {
             if (marketHashName != null)
                 parameter("market_hash_name", marketHashName)
-            parameter("app_id", appId)
-            parameter("currency", currency)
+            if (appId != null)
+                parameter("app_id", appId)
         }
 
-        return response.body()
+        val result: List<SalesHistoryItem> = response.body()
+        cache?.put(cacheKey, result, ListSerializer(SalesHistoryItem.serializer()))
+        return result
     }
 
     /**
      * Retrieves all items that are out-of-stock on skinport with limited pricing data from the last 90 days.
      */
-    suspend fun outOfSalesItems(
-        appId: Int = 730,
-        currency: Currency = Currency.EUR
-    ): List<OutOfStockItem> {
-        val response = client.get(BASE_ENDPOINT + "sales/out-of-stock") {
-            parameter("app_id", appId)
-            parameter("currency", currency)
+    suspend fun outOfStockItems(appId: Int? = null): List<OutOfStockItem> {
+        val cacheKey = if (appId != null) "outOfStock:$appId" else "outOfStock"
+
+        cache?.get(cacheKey, ListSerializer(OutOfStockItem.serializer()))?.let {
+            println("using cache for oos")
+            return it
         }
 
-        return response.body()
+        val response = client.get(BASE_ENDPOINT + "sales/out-of-stock") {
+            if (appId != null)
+                parameter("app_id", appId)
+        }
+
+        val data: List<OutOfStockItem> = response.body()
+        cache?.put(cacheKey, data, ListSerializer(OutOfStockItem.serializer()))
+        return data
     }
+
 
     /**
      * Retrieves a paginated list of all user account transactions.
@@ -108,6 +148,8 @@ class SkinportClient(
         limit: @Range(from = 1, to = 100) Int = 100,
         order: Order = Order.DESC
     ): TransactionsResponse {
+        require(apiSecret != null) { "Transactions endpoint requires authentication" }
+
         val response = client.get(BASE_ENDPOINT + "account/transactions") {
             parameter("page", page)
             parameter("limit", limit)

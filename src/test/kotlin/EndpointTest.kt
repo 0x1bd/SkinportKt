@@ -1,5 +1,7 @@
 import kotlinx.coroutines.runBlocking
 import org.kvxd.skinport.dsl.skinportClient
+import org.kvxd.skinport.internalapi.InternalSkinportAPI
+import org.kvxd.skinport.internalapi.internalSkinportClient
 import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertFailsWith
@@ -10,6 +12,11 @@ class EndpointTest {
 
     private val client = skinportClient {
         fileCache()
+    }
+
+    @OptIn(InternalSkinportAPI::class)
+    private val internalClient = internalSkinportClient {
+
     }
 
     @Test
@@ -38,6 +45,21 @@ class EndpointTest {
         runBlocking {
             assertFailsWith<IllegalArgumentException> {
                 client.transactions()
+            }
+        }
+    }
+
+    @Test
+    fun testInternalAPI() {
+        runBlocking {
+            assertTrue {
+                internalClient.browse(
+                    item = "AWP",
+                    skin = "Printstream",
+
+                    maxWear = 0.05f
+                )
+                    .items.isNotEmpty()
             }
         }
     }

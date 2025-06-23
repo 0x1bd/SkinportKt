@@ -16,6 +16,7 @@ dependencies {
     implementation("io.ktor:ktor-client-encoding:3.1.3")
     implementation("io.ktor:ktor-client-okhttp-jvm:3.1.3")
     implementation("io.ktor:ktor-client-auth:3.1.3")
+    implementation("io.ktor:ktor-client-cio-jvm:3.1.3")
     testImplementation(kotlin("test"))
 
     implementation(libs.bundles.ktor.client)

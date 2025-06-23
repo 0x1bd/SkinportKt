@@ -19,46 +19,47 @@ import org.kvxd.skinport.models.*
 
 private const val BASE_ENDPOINT = "https://api.skinport.com/v1/"
 
-class SkinportClient(
-    private val apiSecret: SkinportAPISecret?,
-    private val cache: SkinportCache?
-) {
+fun defaultHttpClient(apiSecret: SkinportAPISecret? = null): HttpClient = HttpClient(OkHttp) {
+    engine {
+        preconfigured = OkHttpClient.Builder()
+            .addInterceptor(BrotliInterceptor)
+            .build()
+    }
 
-    private val client: HttpClient = HttpClient(OkHttp) {
-        engine {
-            preconfigured = OkHttpClient.Builder()
-                .addInterceptor(BrotliInterceptor)
-                .build()
-        }
+    install(ContentNegotiation) {
+        json()
+    }
 
-        install(ContentNegotiation) {
-            json()
-        }
+    install(HttpTimeout) {
+        requestTimeoutMillis = 1000 * 25
+    }
 
-        install(HttpTimeout) {
-            requestTimeoutMillis = 1000 * 25
-        }
+    install(createErrorPlugin())
 
-        install(createErrorPlugin())
-
-        install(Auth) {
-            if (apiSecret != null) {
-                basic {
-                    credentials {
-                        BasicAuthCredentials(apiSecret.clientId, apiSecret.clientSecret)
-                    }
-                    sendWithoutRequest { request ->
-                        request.url.encodedPath.contains("/account/")
-                    }
+    install(Auth) {
+        if (apiSecret != null) {
+            basic {
+                credentials {
+                    BasicAuthCredentials(apiSecret.clientId, apiSecret.clientSecret)
+                }
+                sendWithoutRequest { request ->
+                    request.url.encodedPath.contains("/account/")
                 }
             }
         }
-
-        install(HttpRequestRetry) {
-            retryOnServerErrors(maxRetries = 3)
-            exponentialDelay()
-        }
     }
+
+    install(HttpRequestRetry) {
+        retryOnServerErrors(maxRetries = 3)
+        exponentialDelay()
+    }
+}
+
+class SkinportClient(
+    private val apiSecret: SkinportAPISecret?,
+    private val cache: SkinportCache?,
+    private val client: HttpClient = defaultHttpClient(apiSecret)
+    ) {
 
     /**
      * Retrieves data for a given item with pricing data from the last 24 hours.

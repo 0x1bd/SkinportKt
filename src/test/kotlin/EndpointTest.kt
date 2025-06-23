@@ -6,7 +6,6 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 // Incomplete, transactions endpoint can't be tested safely.
-@Ignore
 class EndpointTest {
 
     private val client = skinportClient {

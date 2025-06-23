@@ -2,46 +2,22 @@ package org.kvxd.skinport.internalapi
 
 import io.ktor.client.*
 import io.ktor.client.call.*
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.*
-import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.*
-import kotlinx.serialization.json.Json
 import org.jetbrains.annotations.Range
 import org.kvxd.skinport.internalapi.models.BrowseResponse
-import kotlin.math.max
-
-private fun defaultHttpClient(): HttpClient = HttpClient(CIO) {
-    install(ContentNegotiation) {
-        json(Json {
-            ignoreUnknownKeys = true
-        })
-    }
-
-    install(HttpTimeout) {
-        requestTimeoutMillis = 1000 * 25
-    }
-
-    install(HttpRequestRetry) {
-        retryOnServerErrors(maxRetries = 3)
-        exponentialDelay()
-    }
-
-    defaultRequest {
-        header(
-            HttpHeaders.UserAgent,
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
-        )
-        header(HttpHeaders.Referrer, "https://skinport.com")
-        header(HttpHeaders.Cookie, "_csrf=abc;")
-    }
-}
+import org.kvxd.skinport.ProxyCfg
+import org.kvxd.skinport.defaultHttpClient
 
 @OptIn(InternalSkinportAPI::class)
 class InternalSkinportClient(
-    private val client: HttpClient = defaultHttpClient()
+    private val proxyCfg: ProxyCfg? = null,
+
+    private val client: HttpClient = defaultHttpClient(
+        proxyCfg = proxyCfg,
+        mimicBrowser = true,
+    )
 ) {
 
     suspend fun browse(
@@ -88,7 +64,11 @@ class InternalSkinportClient(
             }.also {
                 println(url.buildString())
             }
-        }.body()
+        }
+            .also {
+                println(it.bodyAsText())
+            }
+            .body()
 
 }
 

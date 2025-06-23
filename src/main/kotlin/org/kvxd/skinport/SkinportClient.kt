@@ -2,64 +2,29 @@ package org.kvxd.skinport
 
 import io.ktor.client.*
 import io.ktor.client.call.*
-import io.ktor.client.engine.okhttp.*
-import io.ktor.client.plugins.*
-import io.ktor.client.plugins.auth.*
-import io.ktor.client.plugins.auth.providers.*
-import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
-import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.*
+import io.ktor.client.statement.bodyAsText
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.builtins.ListSerializer
-import okhttp3.OkHttpClient
-import okhttp3.brotli.BrotliInterceptor
 import org.jetbrains.annotations.Range
 import org.kvxd.skinport.cache.SkinportCache
 import org.kvxd.skinport.models.*
 
 private const val BASE_ENDPOINT = "https://api.skinport.com/v1/"
 
-fun defaultHttpClient(apiSecret: SkinportAPISecret? = null): HttpClient = HttpClient(OkHttp) {
-    engine {
-        preconfigured = OkHttpClient.Builder()
-            .addInterceptor(BrotliInterceptor)
-            .build()
-    }
-
-    install(ContentNegotiation) {
-        json()
-    }
-
-    install(HttpTimeout) {
-        requestTimeoutMillis = 1000 * 25
-    }
-
-    install(createErrorPlugin())
-
-    install(Auth) {
-        if (apiSecret != null) {
-            basic {
-                credentials {
-                    BasicAuthCredentials(apiSecret.clientId, apiSecret.clientSecret)
-                }
-                sendWithoutRequest { request ->
-                    request.url.encodedPath.contains("/account/")
-                }
-            }
-        }
-    }
-
-    install(HttpRequestRetry) {
-        retryOnServerErrors(maxRetries = 3)
-        exponentialDelay()
-    }
-}
-
 class SkinportClient(
     private val apiSecret: SkinportAPISecret?,
     private val cache: SkinportCache?,
-    private val client: HttpClient = defaultHttpClient(apiSecret)
-    ) {
+    private val proxyCfg: ProxyCfg? = null,
+
+    private val client: HttpClient = defaultHttpClient(
+        proxyCfg = proxyCfg,
+        mimicBrowser = false,
+        apiSecret = apiSecret,
+        useErrorPlugin = true,
+        enableBrotli = true
+    )
+) {
 
     /**
      * Retrieves data for a given item with pricing data from the last 24 hours.

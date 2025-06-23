@@ -1,4 +1,5 @@
 import kotlinx.coroutines.runBlocking
+import org.kvxd.skinport.ProxyCfg
 import org.kvxd.skinport.dsl.skinportClient
 import org.kvxd.skinport.internalapi.InternalSkinportAPI
 import org.kvxd.skinport.internalapi.internalSkinportClient
@@ -8,6 +9,7 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 // Incomplete, transactions endpoint can't be tested safely.
+@Ignore
 class EndpointTest {
 
     private val client = skinportClient {

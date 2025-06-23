@@ -11,31 +11,19 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.builtins.ListSerializer
-import okhttp3.Credentials
 import okhttp3.OkHttpClient
 import okhttp3.brotli.BrotliInterceptor
 import org.jetbrains.annotations.Range
 import org.kvxd.skinport.cache.SkinportCache
 import org.kvxd.skinport.models.*
-import java.net.InetSocketAddress
-import java.net.Proxy
 
 private const val BASE_ENDPOINT = "https://api.skinport.com/v1/"
 
-fun defaultHttpClient(
-    apiSecret: SkinportAPISecret? = null,
-    proxyHost: String? = null,
-    proxyPort: Int? = null,
-    proxyUser: String? = null,
-    proxyPassword: String? = null
-): HttpClient = HttpClient(OkHttp) {
+fun defaultHttpClient(apiSecret: SkinportAPISecret? = null): HttpClient = HttpClient(OkHttp) {
     engine {
         preconfigured = OkHttpClient.Builder()
             .addInterceptor(BrotliInterceptor)
             .build()
-
-        if (proxyHost != null && proxyPort != null)
-            proxy = Proxy(Proxy.Type.HTTP, InetSocketAddress(proxyHost, proxyPort))
     }
 
     install(ContentNegotiation) {
@@ -43,7 +31,7 @@ fun defaultHttpClient(
     }
 
     install(HttpTimeout) {
-        requestTimeoutMillis = 25_000
+        requestTimeoutMillis = 1000 * 25
     }
 
     install(createErrorPlugin())
@@ -65,22 +53,13 @@ fun defaultHttpClient(
         retryOnServerErrors(maxRetries = 3)
         exponentialDelay()
     }
-
-    defaultRequest {
-        if (proxyUser != null && proxyPassword != null) {
-            val credentials = Credentials.basic(proxyUser, proxyPassword)
-
-            header(HttpHeaders.ProxyAuthorization, credentials)
-        }
-    }
 }
 
-
-open class SkinportClient(
-    internal open val apiSecret: SkinportAPISecret?,
-    internal open val cache: SkinportCache?,
-    internal open val client: HttpClient = defaultHttpClient(apiSecret)
-) {
+class SkinportClient(
+    private val apiSecret: SkinportAPISecret?,
+    private val cache: SkinportCache?,
+    private val client: HttpClient = defaultHttpClient(apiSecret)
+    ) {
 
     /**
      * Retrieves data for a given item with pricing data from the last 24 hours.

@@ -1,38 +1,35 @@
 package org.kvxd.skinport.internalapi
 
-import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
-import io.ktor.client.statement.bodyAsText
 import io.ktor.http.*
+import kotlinx.serialization.SerialName
 import org.jetbrains.annotations.Range
+import org.kvxd.skinport.SkinportClient
 import org.kvxd.skinport.internalapi.models.BrowseResponse
-import org.kvxd.skinport.ProxyCfg
-import org.kvxd.skinport.defaultHttpClient
 
+/**
+ * Retrieves detailed listings for a given item and skin.
+ */
 @OptIn(InternalSkinportAPI::class)
-class InternalSkinportClient(
-    private val proxyCfg: ProxyCfg? = null,
+suspend fun SkinportClient.browse(
+    appid: Int = 730,
+    item: String,
+    skin: String,
+    minPrice: Double? = null,
+    maxPrice: Double? = null,
+    minWear: Float? = null,
+    maxWear: Float? = null,
+    stattrak: Boolean? = null,
+    souvenir: Boolean? = null,
+    daysLocked: Int? = null,
+    skip: @Range(from = 0, to = 20) Int? = null,
+    sort: Sort? = null,
+    order: Order? = null
+): Result<BrowseResponse> =
+    runCatching {
+        if (!this.flags.mimicBrowser) throw IllegalArgumentException("Internal API requires mimicBrowser to be true.")
 
-    private val client: HttpClient = defaultHttpClient(
-        proxyCfg = proxyCfg,
-        mimicBrowser = true,
-    )
-) {
-
-    suspend fun browse(
-        appid: Int = 730,
-        item: String,
-        skin: String,
-        minPrice: Double? = null,
-        maxPrice: Double? = null,
-        minWear: Float? = null,
-        maxWear: Float? = null,
-        stattrak: Boolean? = null,
-        souvenir: Boolean? = null,
-        daysLocked: Int? = null,
-        skip: @Range(from = 0, to = 20) Int? = null
-    ): BrowseResponse =
         client.get {
             url {
                 protocol = URLProtocol.HTTPS
@@ -61,18 +58,43 @@ class InternalSkinportClient(
 
                 if (skip != null)
                     parameter("skip", skip)
-            }.also {
-                println(url.buildString())
+
+                if (sort != null)
+                    parameter("sort", sort)
+                if (order != null)
+                    parameter("order", order)
             }
         }
-            .also {
-                println(it.bodyAsText())
-            }
-            .body()
-
-}
+            .body<BrowseResponse>()
+    }
 
 private fun Boolean.toInt(): Int = when (this) {
     true -> 1
     false -> 0
+}
+
+enum class Order {
+
+    @SerialName("asc")
+    ASCENDING,
+
+    @SerialName("desc")
+    DESCENDING
+
+}
+
+enum class Sort {
+
+    @SerialName("sale")
+    VALUE,
+
+    @SerialName("percent")
+    DISCOUNT,
+
+    @SerialName("date")
+    DATE,
+
+    @SerialName("wear")
+    WEAR
+
 }

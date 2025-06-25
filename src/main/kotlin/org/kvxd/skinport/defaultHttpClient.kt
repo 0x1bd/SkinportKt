@@ -1,88 +1,118 @@
 package org.kvxd.skinport
 
 import io.ktor.client.*
+import io.ktor.client.engine.okhttp.*
 import io.ktor.client.plugins.*
+import io.ktor.client.plugins.auth.*
+import io.ktor.client.plugins.auth.providers.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
-import io.ktor.client.engine.okhttp.*
-import io.ktor.client.plugins.auth.Auth
-import io.ktor.client.plugins.auth.providers.BasicAuthCredentials
-import io.ktor.client.plugins.auth.providers.basic
 import okhttp3.Credentials
 import okhttp3.OkHttpClient
 import okhttp3.brotli.BrotliInterceptor
+import java.io.IOException
+import java.net.InetSocketAddress
 import java.net.Proxy
+import java.security.SecureRandom
+import java.util.*
 
-fun defaultHttpClient(
-    proxyCfg: ProxyCfg? = null,
-    mimicBrowser: Boolean = false,
-    apiSecret: SkinportAPISecret? = null,
-    useErrorPlugin: Boolean = false,
-    enableBrotli: Boolean = false
-): HttpClient =
-    HttpClient(OkHttp) {
+private val USER_AGENTS = listOf(
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Edge/124.0.2478.67 Safari/537.36"
+)
 
-        engine {
-            preconfigured = OkHttpClient.Builder().apply {
-                if (proxyCfg != null) {
-                    proxy(Proxy(Proxy.Type.HTTP, java.net.InetSocketAddress(proxyCfg.host, proxyCfg.port)))
+fun configureClientEngine(builder: OkHttpClient.Builder, flags: ClientFlags) {
+    flags.proxy?.let { proxyCfg ->
+        val host = proxyCfg.host
+        val port = proxyCfg.port
+        if (host != null && port != null) {
+            builder.proxy(Proxy(Proxy.Type.HTTP, InetSocketAddress(host, port)))
 
-                    if (proxyCfg.username != null && proxyCfg.password != null) {
-                        proxyAuthenticator { _, response ->
-                            val credentials = Credentials.basic(proxyCfg.username, proxyCfg.password)
+            val username = proxyCfg.username
+            val password = proxyCfg.password
+            if (username != null && password != null) {
+                builder.proxyAuthenticator { _, response ->
+                    val credentials = Credentials.basic(username, password)
 
-                            response.request.newBuilder()
-                                .header("Proxy-Authorization", credentials)
-                                .build()
-                        }
-                    }
+                    response.request.newBuilder()
+                        .header("Proxy-Authorization", credentials)
+                        .build()
                 }
-
-                if (enableBrotli)
-                    addInterceptor(BrotliInterceptor)
-            }.build()
-        }
-
-        install(ContentNegotiation) {
-            json(Json { ignoreUnknownKeys = true })
-        }
-
-        install(HttpTimeout) {
-            requestTimeoutMillis = 25_000
-        }
-
-        install(HttpRequestRetry) {
-            retryOnServerErrors(maxRetries = 3)
-            exponentialDelay()
-        }
-
-        install(Auth) {
-            if (apiSecret != null) {
-                basic {
-                    credentials {
-                        BasicAuthCredentials(apiSecret.clientId, apiSecret.clientSecret)
-                    }
-                    sendWithoutRequest { request ->
-                        request.url.encodedPath.contains("/account/")
-                    }
-                }
-            }
-        }
-
-        if (useErrorPlugin)
-            install(createErrorPlugin())
-
-        defaultRequest {
-            if (mimicBrowser) {
-                header(
-                    HttpHeaders.UserAgent,
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
-                )
-                header(HttpHeaders.Referrer, "https://skinport.com/")
-                header(HttpHeaders.Cookie, "_csrf=abc;")
             }
         }
     }
+
+    if (flags.enableBrotli) {
+        builder.addInterceptor(BrotliInterceptor)
+    }
+}
+
+fun HttpClientConfig<OkHttpConfig>.configureClientPlugins(flags: ClientFlags) {
+    install(ContentNegotiation) {
+        json(Json { ignoreUnknownKeys = true })
+    }
+
+    install(HttpTimeout) {
+        requestTimeoutMillis = 25_000
+    }
+
+    install(HttpRequestRetry) {
+        maxRetries = 3
+        retryOnExceptionIf { _, cause ->
+            cause is IOException ||
+                    cause is SerializationException ||
+                    cause is ClientRequestException ||
+                    cause is ServerResponseException ||
+                    cause is ResponseException
+        }
+    }
+
+    install(Auth) {
+        flags.apiSecret?.let { secret ->
+            basic {
+                credentials {
+                    BasicAuthCredentials(secret.clientId, secret.clientSecret)
+                }
+                sendWithoutRequest { request ->
+                    request.url.encodedPath.contains("/account/")
+                }
+            }
+        }
+    }
+
+    if (flags.useErrorPlugin) {
+        install(createErrorPlugin())
+    }
+
+    defaultRequest {
+        if (flags.mimicBrowser) {
+            header(
+                HttpHeaders.UserAgent,
+                USER_AGENTS.random()
+            )
+            header(HttpHeaders.Referrer, "https://skinport.com/")
+            header(HttpHeaders.Cookie, "_csrf=${generateCsrfCookie()};")
+        }
+    }
+}
+
+fun defaultHttpClient(flags: ClientFlags): HttpClient =
+    HttpClient(OkHttp) {
+        engine {
+            preconfigured = OkHttpClient.Builder().also { builder ->
+                configureClientEngine(builder, flags)
+            }.build()
+        }
+        configureClientPlugins(flags)
+    }
+
+fun generateCsrfCookie(): String {
+    val bytes = ByteArray(16)
+    SecureRandom().nextBytes(bytes)
+    return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
+}

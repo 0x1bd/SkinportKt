@@ -3,8 +3,6 @@ package org.kvxd.skinport
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
-import io.ktor.client.statement.bodyAsText
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.builtins.ListSerializer
 import org.jetbrains.annotations.Range
 import org.kvxd.skinport.cache.SkinportCache
@@ -13,17 +11,9 @@ import org.kvxd.skinport.models.*
 private const val BASE_ENDPOINT = "https://api.skinport.com/v1/"
 
 class SkinportClient(
-    private val apiSecret: SkinportAPISecret?,
-    private val cache: SkinportCache?,
-    private val proxyCfg: ProxyCfg? = null,
-
-    private val client: HttpClient = defaultHttpClient(
-        proxyCfg = proxyCfg,
-        mimicBrowser = false,
-        apiSecret = apiSecret,
-        useErrorPlugin = true,
-        enableBrotli = true
-    )
+    internal val flags: ClientFlags,
+    internal val cache: SkinportCache?,
+    internal val client: HttpClient = defaultHttpClient(flags)
 ) {
 
     /**
@@ -32,7 +22,7 @@ class SkinportClient(
     suspend fun items(
         appId: Int? = null,
         tradable: Boolean? = null
-    ): List<Item> {
+    ): Result<List<Item>> = runCatching {
         val cacheKey = buildString {
             append("items")
             if (appId != null) append(":appId=$appId")
@@ -40,7 +30,7 @@ class SkinportClient(
         }
 
         cache?.get(cacheKey, ListSerializer(Item.serializer()))?.let {
-            return it
+            return@runCatching it
         }
 
         val response = client.get(BASE_ENDPOINT + "items") {
@@ -52,7 +42,7 @@ class SkinportClient(
 
         val result: List<Item> = response.body()
         cache?.put(cacheKey, result, ListSerializer(Item.serializer()))
-        return result
+        return@runCatching result
     }
 
     /**
@@ -61,7 +51,7 @@ class SkinportClient(
     suspend fun salesHistory(
         marketHashName: String? = null,
         appId: Int? = null,
-    ): List<SalesHistoryItem> {
+    ): Result<List<SalesHistoryItem>> = runCatching {
         val cacheKey = buildString {
             append("salesHistory")
             if (marketHashName != null) append(":$marketHashName")
@@ -69,7 +59,7 @@ class SkinportClient(
         }
 
         cache?.get(cacheKey, ListSerializer(SalesHistoryItem.serializer()))?.let {
-            return it
+            return@runCatching it
         }
 
         val response = client.get(BASE_ENDPOINT + "sales/history") {
@@ -81,17 +71,17 @@ class SkinportClient(
 
         val result: List<SalesHistoryItem> = response.body()
         cache?.put(cacheKey, result, ListSerializer(SalesHistoryItem.serializer()))
-        return result
+        return@runCatching result
     }
 
     /**
      * Retrieves all items that are out-of-stock on skinport with limited pricing data from the last 90 days.
      */
-    suspend fun outOfStockItems(appId: Int? = null): List<OutOfStockItem> {
+    suspend fun outOfStockItems(appId: Int? = null): Result<List<OutOfStockItem>> = runCatching {
         val cacheKey = if (appId != null) "outOfStock:$appId" else "outOfStock"
 
         cache?.get(cacheKey, ListSerializer(OutOfStockItem.serializer()))?.let {
-            return it
+            return@runCatching it
         }
 
         val response = client.get(BASE_ENDPOINT + "sales/out-of-stock") {
@@ -101,7 +91,7 @@ class SkinportClient(
 
         val data: List<OutOfStockItem> = response.body()
         cache?.put(cacheKey, data, ListSerializer(OutOfStockItem.serializer()))
-        return data
+        return@runCatching data
     }
 
 
@@ -112,8 +102,8 @@ class SkinportClient(
         page: Int = 1,
         limit: @Range(from = 1, to = 100) Int = 100,
         order: Order = Order.DESC
-    ): TransactionsResponse {
-        require(apiSecret != null) { "Transactions endpoint requires authentication" }
+    ): Result<TransactionsResponse> = runCatching {
+        require(flags.apiSecret != null) { "Transactions endpoint requires authentication" }
 
         val response = client.get(BASE_ENDPOINT + "account/transactions") {
             parameter("page", page)
@@ -121,7 +111,11 @@ class SkinportClient(
             parameter("order", order.name.lowercase())
         }
 
-        return response.body()
+        return@runCatching response.body()
+    }
+
+    fun close() {
+        client.close()
     }
 
 }

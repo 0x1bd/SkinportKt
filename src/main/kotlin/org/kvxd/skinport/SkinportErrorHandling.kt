@@ -1,15 +1,15 @@
 package org.kvxd.skinport
 
-import io.ktor.client.plugins.api.createClientPlugin
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.isSuccess
+import io.ktor.client.plugins.api.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
 import kotlinx.serialization.json.Json
 import org.kvxd.skinport.models.SkinportError
 import org.kvxd.skinport.models.SkinportErrorResponse
 
 sealed class SkinportException(
-    val statusCode: Int,
-    val error: SkinportError
+    statusCode: Int,
+    error: SkinportError
 ) : Exception("${error.id}: ${error.message}") {
 
     class AuthenticationError(status: Int, error: SkinportError) : SkinportException(status, error)

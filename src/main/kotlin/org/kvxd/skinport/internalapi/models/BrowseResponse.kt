@@ -43,8 +43,16 @@ data class Listing(
     val wear: Float,
     val link: String,
     val type: String,
+    val stickers: List<Sticker> = emptyList(),
     val souvenir: Boolean,
     val stattrak: Boolean
+)
+
+@Serializable
+data class Sticker(
+    val img: String,
+    val name: String,
+    val slot: Int
 )
 
 @Serializable

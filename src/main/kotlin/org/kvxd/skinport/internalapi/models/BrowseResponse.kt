@@ -1,8 +1,10 @@
 package org.kvxd.skinport.internalapi.models
 
 import kotlinx.datetime.Instant
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
+import org.kvxd.skinport.models.Currency
 
 @Serializable
 data class BrowseResponse(
@@ -50,12 +52,37 @@ data class Listing(
 
 @Serializable
 data class Sticker(
-    val img: String,
-    val name: String,
-    val slot: Int
+    val img: String, val name: String, val slot: Int
 )
 
 @Serializable
 data class Filter(
     val total: Int
 )
+
+
+enum class Order {
+
+    @SerialName("asc")
+    ASCENDING,
+
+    @SerialName("desc")
+    DESCENDING
+
+}
+
+enum class Sort {
+
+    @SerialName("sale")
+    VALUE,
+
+    @SerialName("percent")
+    DISCOUNT,
+
+    @SerialName("date")
+    DATE,
+
+    @SerialName("wear")
+    WEAR
+
+}

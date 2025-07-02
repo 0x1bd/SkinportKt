@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "io.github.0x1bd"
-version = "0.4.1"
+version = "0.4.2"
 description = "Skinport API wrapper written in kotlin"
 
 repositories {

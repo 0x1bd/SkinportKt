@@ -1,6 +1,6 @@
 package org.kvxd.skinport
 
-data class ProxyCfg(
+public data class ProxyCfg(
     var host: String? = null,
     var port: Int? = null,
     var username: String? = null,

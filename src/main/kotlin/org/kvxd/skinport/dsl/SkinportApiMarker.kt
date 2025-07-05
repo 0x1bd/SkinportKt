@@ -1,4 +1,4 @@
 package org.kvxd.skinport.dsl
 
 @DslMarker
-annotation class SkinportApiMarker
+public annotation class SkinportApiMarker

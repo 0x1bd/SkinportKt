@@ -1,6 +1,6 @@
 package org.kvxd.skinport
 
-data class SkinportAPISecret(
+public data class SkinportAPISecret(
     var clientId: String,
     var clientSecret: String
 )

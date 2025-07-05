@@ -7,7 +7,7 @@ import kotlinx.serialization.json.JsonElement
 import org.kvxd.skinport.models.Currency
 
 @Serializable
-data class BrowseResponse(
+public data class BrowseResponse(
     val requestId: String,
     val success: Boolean,
     val message: String? = null,
@@ -16,7 +16,7 @@ data class BrowseResponse(
 )
 
 @Serializable
-data class Listing(
+public data class Listing(
     val id: Int,
     val saleId: Int,
     val shortId: String,
@@ -51,17 +51,17 @@ data class Listing(
 )
 
 @Serializable
-data class Sticker(
+public data class Sticker(
     val img: String, val name: String, val slot: Int
 )
 
 @Serializable
-data class Filter(
+public data class Filter(
     val total: Int
 )
 
 
-enum class Order {
+public enum class Order {
 
     @SerialName("asc")
     ASCENDING,
@@ -71,7 +71,7 @@ enum class Order {
 
 }
 
-enum class Sort {
+public enum class Sort {
 
     @SerialName("sale")
     VALUE,

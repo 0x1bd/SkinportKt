@@ -10,7 +10,7 @@ import org.kvxd.skinport.models.*
 
 private const val BASE_ENDPOINT = "https://api.skinport.com/v1/"
 
-class SkinportClient(
+public class SkinportClient(
     internal val flags: ClientFlags,
     internal val cache: SkinportCache?,
     internal val client: HttpClient = defaultHttpClient(flags)
@@ -19,7 +19,7 @@ class SkinportClient(
     /**
      * Retrieves data for a given item with pricing data from the last 24 hours.
      */
-    suspend fun items(
+    public suspend fun items(
         appId: Int? = null,
         tradable: Boolean? = null
     ): Result<List<Item>> = runCatching {
@@ -48,7 +48,7 @@ class SkinportClient(
     /**
      * Retrieves the sales history for a given list of items (seperated by commas)
      */
-    suspend fun salesHistory(
+    public suspend fun salesHistory(
         marketHashName: String? = null,
         appId: Int? = null,
     ): Result<List<SalesHistoryItem>> = runCatching {
@@ -77,7 +77,7 @@ class SkinportClient(
     /**
      * Retrieves all items that are out-of-stock on skinport with limited pricing data from the last 90 days.
      */
-    suspend fun outOfStockItems(appId: Int? = null): Result<List<OutOfStockItem>> = runCatching {
+    public suspend fun outOfStockItems(appId: Int? = null): Result<List<OutOfStockItem>> = runCatching {
         val cacheKey = if (appId != null) "outOfStock:$appId" else "outOfStock"
 
         cache?.get(cacheKey, ListSerializer(OutOfStockItem.serializer()))?.let {
@@ -98,7 +98,7 @@ class SkinportClient(
     /**
      * Retrieves a paginated list of all user account transactions.
      */
-    suspend fun transactions(
+    public suspend fun transactions(
         page: Int = 1,
         limit: @Range(from = 1, to = 100) Int = 100,
         order: Order = Order.DESC
@@ -114,7 +114,7 @@ class SkinportClient(
         return@runCatching response.body()
     }
 
-    fun close() {
+    public fun close() {
         client.close()
     }
 

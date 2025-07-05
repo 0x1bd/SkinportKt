@@ -7,28 +7,28 @@ import org.kvxd.skinport.cache.impl.SkinportFileCache
 import java.io.File
 
 @SkinportApiMarker
-annotation class SkinportClientDsl
+public annotation class SkinportClientDsl
 
 @SkinportClientDsl
-class SkinportClientBuilder {
-    var flags: ClientFlags = ClientFlags()
-    var cache: SkinportCache? = null
+public class SkinportClientBuilder {
+    public var flags: ClientFlags = ClientFlags()
+    public var cache: SkinportCache? = null
 
-    fun build(): SkinportClient {
+    public fun build(): SkinportClient {
         return SkinportClient(flags, cache)
     }
 
-    fun fileCache(directory: File = File("skinport-cache"), ttlMillis: Long = 5 * 60 * 1000L) {
+    public fun fileCache(directory: File = File("skinport-cache"), ttlMillis: Long = 5 * 60 * 1000L) {
         cache = SkinportFileCache(directory, ttlMillis)
     }
 
-    fun flags(flagsCfg: ClientFlags.() -> Unit) {
+    public fun flags(flagsCfg: ClientFlags.() -> Unit) {
         val clientFlags = ClientFlags().apply(flagsCfg)
         flags = clientFlags
     }
 }
 
 @SkinportClientDsl
-fun skinportClient(block: SkinportClientBuilder.() -> Unit): SkinportClient {
+public fun skinportClient(block: SkinportClientBuilder.() -> Unit): SkinportClient {
     return SkinportClientBuilder().apply(block).build()
 }

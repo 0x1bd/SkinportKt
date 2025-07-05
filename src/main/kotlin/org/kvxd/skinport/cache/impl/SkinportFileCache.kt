@@ -6,7 +6,7 @@ import kotlinx.serialization.json.Json
 import org.kvxd.skinport.cache.SkinportCache
 import java.io.File
 
-class SkinportFileCache(
+public class SkinportFileCache(
     private val directory: File,
     private val ttlMillis: Long
 ) : SkinportCache {

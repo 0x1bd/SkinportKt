@@ -4,7 +4,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.kvxd.skinport.SkinportClient
 
-class SkinportClientPool(
+public class SkinportClientPool(
     private val clientFactory: () -> SkinportClient,
     private val maxPerClient: Int = 50,
     private val maxClients: Int = 5
@@ -17,14 +17,14 @@ class SkinportClientPool(
      * Runs the given suspending function with an available SkinportClient from the pool.
      * This method suspends until a client is available.
      */
-    suspend fun <T> withClient(function: suspend SkinportClient.() -> T): T =
+    public suspend fun <T> withClient(function: suspend SkinportClient.() -> T): T =
         function(getClient())
 
     /**
      * Retrieves a [SkinportClient] from the pool.
      * Recycles clients until [maxPerClient] usage count is reached, then closes and replaces them.
      */
-    suspend fun getClient(): SkinportClient = mutex.withLock {
+    public suspend fun getClient(): SkinportClient = mutex.withLock {
         // Remove exhausted or bad clients
         while (clients.isNotEmpty() && (clients.first().isExhausted())) {
             clients.removeFirst().close()
@@ -43,7 +43,7 @@ class SkinportClientPool(
     /**
      * Closes all clients in the pool and clears the pool.
      */
-    suspend fun closeAll() {
+    public suspend fun closeAll() {
         mutex.withLock {
             clients.forEach { it.close() }
             clients.clear()

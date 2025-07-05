@@ -4,10 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-/**
- *
- */
-data class Item(
+public data class Item(
     @SerialName("market_hash_name")
     val marketHashName: String,
     val currency: String,

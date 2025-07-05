@@ -5,13 +5,13 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class TransactionsResponse(
+public data class TransactionsResponse(
     val pagination: Pagination,
     val data: List<TransactionData>
 ) {
 
     @Serializable
-    data class Pagination(
+    public data class Pagination(
         val page: Int,
         val pages: Int,
         val limit: Int,
@@ -19,7 +19,7 @@ data class TransactionsResponse(
     )
 
     @Serializable
-    data class TransactionData(
+    public data class TransactionData(
         val id: Long,
         val type: Type,
         @SerialName("sub_type")
@@ -36,7 +36,7 @@ data class TransactionsResponse(
     ) {
 
         @Serializable
-        data class Item(
+        public data class Item(
             @SerialName("asset_id")
             val assetId: Long,
             @SerialName("sale_id")
@@ -52,7 +52,7 @@ data class TransactionsResponse(
         )
 
         @Serializable
-        enum class Type {
+        public enum class Type {
 
             @SerialName("credit")
             CREDIT,
@@ -66,7 +66,7 @@ data class TransactionsResponse(
         }
 
         @Serializable
-        enum class SubType {
+        public enum class SubType {
 
             @SerialName("item")
             Item
@@ -75,7 +75,7 @@ data class TransactionsResponse(
 
 
         @Serializable
-        enum class Status {
+        public enum class Status {
 
             @SerialName("complete")
             COMPLETE,

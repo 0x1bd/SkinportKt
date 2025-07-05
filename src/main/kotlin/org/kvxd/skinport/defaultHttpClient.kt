@@ -26,7 +26,7 @@ private val USER_AGENTS = listOf(
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Edge/124.0.2478.67 Safari/537.36"
 )
 
-fun configureClientEngine(builder: OkHttpClient.Builder, flags: ClientFlags) {
+internal fun configureClientEngine(builder: OkHttpClient.Builder, flags: ClientFlags) {
     flags.proxy?.let { proxyCfg ->
         val host = proxyCfg.host
         val port = proxyCfg.port
@@ -52,7 +52,7 @@ fun configureClientEngine(builder: OkHttpClient.Builder, flags: ClientFlags) {
     }
 }
 
-fun HttpClientConfig<OkHttpConfig>.configureClientPlugins(flags: ClientFlags) {
+internal fun HttpClientConfig<OkHttpConfig>.configureClientPlugins(flags: ClientFlags) {
     install(ContentNegotiation) {
         json(Json { ignoreUnknownKeys = true })
     }
@@ -85,10 +85,6 @@ fun HttpClientConfig<OkHttpConfig>.configureClientPlugins(flags: ClientFlags) {
         }
     }
 
-    if (flags.useErrorPlugin) {
-        install(createErrorPlugin())
-    }
-
     defaultRequest {
         if (flags.mimicBrowser) {
             header(
@@ -101,7 +97,7 @@ fun HttpClientConfig<OkHttpConfig>.configureClientPlugins(flags: ClientFlags) {
     }
 }
 
-fun defaultHttpClient(flags: ClientFlags): HttpClient =
+public fun defaultHttpClient(flags: ClientFlags): HttpClient =
     HttpClient(OkHttp) {
         engine {
             preconfigured = OkHttpClient.Builder().also { builder ->
@@ -111,7 +107,7 @@ fun defaultHttpClient(flags: ClientFlags): HttpClient =
         configureClientPlugins(flags)
     }
 
-fun generateCsrfCookie(): String {
+private fun generateCsrfCookie(): String {
     val bytes = ByteArray(16)
     SecureRandom().nextBytes(bytes)
     return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)

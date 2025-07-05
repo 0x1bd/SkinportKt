@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 import org.kvxd.skinport.models.Currency
 
 @Serializable
-data class DataResponse(
+public data class DataResponse(
     val requestId: String,
     val success: Boolean,
     val message: String? = null,

@@ -4,7 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-enum class Order {
+public enum class Order {
 
     @SerialName("asc")
     ASC,

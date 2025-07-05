@@ -13,8 +13,8 @@ import org.kvxd.skinport.internalapi.models.Sort
 /**
  * Retrieves detailed listings for a given item and skin.
  */
-@OptIn(InternalSkinportAPI::class)
-suspend fun SkinportClient.browse(
+@InternalSkinportAPI
+public suspend fun SkinportClient.browse(
     appid: Int = 730,
     item: String,
     skin: String,
@@ -86,7 +86,8 @@ suspend fun SkinportClient.browse(
  * Retrieves detailed metadata.
  * Used by [org.kvxd.skinport.pooling.SkinportClientPool] to account for currency differences caused by different proxy locations.
  */
-suspend fun SkinportClient.data(): Result<DataResponse> = runCatching {
+@InternalSkinportAPI
+public suspend fun SkinportClient.data(): Result<DataResponse> = runCatching {
     client.get {
         url {
             protocol = URLProtocol.HTTPS

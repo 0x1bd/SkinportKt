@@ -4,7 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class OutOfStockItem(
+public data class OutOfStockItem(
     @SerialName("market_hash_name")
     val marketHashName: String,
     val version: String? = null,

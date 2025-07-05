@@ -4,7 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class SalesHistoryItem(
+public data class SalesHistoryItem(
     @SerialName("market_hash_name")
     val marketHashName: String,
     val version: String? = null,
@@ -24,7 +24,7 @@ data class SalesHistoryItem(
 ) {
 
     @Serializable
-    data class HistoricPriceData(
+    public data class HistoricPriceData(
         val min: Double? = null,
         val max: Double? = null,
         @SerialName("avg")

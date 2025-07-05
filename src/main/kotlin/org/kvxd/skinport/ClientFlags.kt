@@ -5,6 +5,7 @@ public data class ClientFlags(
     var mimicBrowser: Boolean = false,
     var apiSecret: SkinportAPISecret? = null,
     var enableBrotli: Boolean = false,
+    var enableRetry: Boolean = true
 )
 
 public fun ClientFlags.proxy(proxyConfig: ProxyCfg.() -> Unit) {

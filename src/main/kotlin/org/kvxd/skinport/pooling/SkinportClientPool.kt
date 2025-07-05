@@ -1,52 +1,114 @@
 package org.kvxd.skinport.pooling
 
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.withPermit
 import org.kvxd.skinport.SkinportClient
 
+/**
+ * A coroutine-based pool for managing [SkinportClient] instances.
+ *
+ * @param clientFactory Factory function to create new clients
+ * @param maxPerClient Maximum requests per client before retirement
+ * @param maxClients Maximum concurrent clients in the pool
+ */
 public class SkinportClientPool(
     private val clientFactory: () -> SkinportClient,
-    private val maxPerClient: Int = 50,
+    private val maxPerClient: Int = 5,
     private val maxClients: Int = 5
 ) {
-
+    private val allocationSemaphore = Semaphore(maxClients)
     private val mutex = Mutex()
-    private val clients = ArrayDeque<PooledClient>()
+    private val available = ArrayDeque<PooledClient>()
+    private val allClients = mutableSetOf<PooledClient>()
+    private var activeCount = 0
 
-    /**
-     * Runs the given suspending function with an available SkinportClient from the pool.
-     * This method suspends until a client is available.
-     */
-    public suspend fun <T> withClient(function: suspend SkinportClient.() -> T): T =
-        function(getClient())
+    private inner class PooledClient(
+        val client: SkinportClient
+    ) {
+        var uses: Int = 0
 
-    /**
-     * Retrieves a [SkinportClient] from the pool.
-     * Recycles clients until [maxPerClient] usage count is reached, then closes and replaces them.
-     */
-    public suspend fun getClient(): SkinportClient = mutex.withLock {
-        // Remove exhausted or bad clients
-        while (clients.isNotEmpty() && (clients.first().isExhausted())) {
-            clients.removeFirst().close()
+        /** Acquires the client and increments usage count */
+        fun acquire(): SkinportClient {
+            uses++
+            return client
         }
 
-        while (clients.size < maxClients) {
-            clients.addLast(PooledClient(clientFactory(), maxPerClient))
-        }
+        /** Checks if client has reached maximum usage */
+        fun isExhausted() = uses >= maxPerClient
 
-        val pooledClient = clients.removeFirst()
-        pooledClient.incrementUsage()
-        clients.addLast(pooledClient)
-        pooledClient.client
+        /** Closes the underlying client */
+        fun close() = client.close()
     }
 
     /**
-     * Closes all clients in the pool and clears the pool.
+     * Executes [block] with an acquired client.
+     *
+     * Guarantees client will be released back to the pool after execution.
      */
-    public suspend fun closeAll() {
+    public suspend fun <T> withClient(block: suspend (SkinportClient) -> T): T {
+        allocationSemaphore.acquire()
+        try {
+            val client = mutex.withLock { getAvailableClient() }
+            try {
+                return block(client)
+            } finally {
+                releaseClient(client)
+            }
+        } finally {
+            allocationSemaphore.release()
+        }
+    }
+
+    /** Gets existing available client or creates new one */
+    private fun getAvailableClient(): SkinportClient {
+        val client = (available.removeFirstOrNull() ?: createNewClient()).acquire()
+        activeCount++
+        return client
+    }
+
+    /** Creates new client when pool capacity allows */
+    private fun createNewClient(): PooledClient {
+        check(allClients.size < maxClients) { "Max clients reached" }
+        return PooledClient(clientFactory()).also { allClients.add(it) }
+    }
+
+
+    /** Releases client back to pool or retires if exhausted */
+    private suspend fun releaseClient(client: SkinportClient) {
+        var closeClient: PooledClient? = null
+
         mutex.withLock {
-            clients.forEach { it.close() }
-            clients.clear()
+            activeCount--
+            val pooled = allClients.find { it.client == client }
+                ?: throw IllegalStateException("Unknown client")
+
+            when {
+                pooled.isExhausted() -> {
+                    allClients.remove(pooled)
+                    closeClient = pooled
+                }
+
+                else -> available.addLast(pooled)
+            }
         }
+
+        closeClient?.close()
     }
+
+    /** Closes all clients and clears the pool */
+    public suspend fun close() {
+        val clientsToClose = mutex.withLock {
+            val clients = allClients.toList()
+            available.clear()
+            allClients.clear()
+            activeCount = 0
+            clients
+        }
+        clientsToClose.forEach { it.close() }
+    }
+
+    /** Active client count for debugging */
+    public suspend fun activeCount(): Int = mutex.withLock { activeCount }
 }

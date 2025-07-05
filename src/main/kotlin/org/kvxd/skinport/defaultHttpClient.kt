@@ -61,16 +61,31 @@ internal fun HttpClientConfig<OkHttpConfig>.configureClientPlugins(flags: Client
         requestTimeoutMillis = 25_000
     }
 
-    install(HttpRequestRetry) {
-        maxRetries = 3
-        retryOnExceptionIf { _, cause ->
-            cause is IOException ||
-                    cause is SerializationException ||
-                    cause is ClientRequestException ||
-                    cause is ServerResponseException ||
-                    cause is ResponseException
+    if (flags.enableRetry)
+        install(HttpRequestRetry) {
+            maxRetries = 5
+            exponentialDelay(
+                base = 500.0,
+                maxDelayMs = 10000L
+            )
+
+            retryIf { request, response ->
+                when (response.status.value) {
+                    in 500..599 -> true
+                    429 -> true
+                    408 -> true
+                    else -> false
+                }
+            }
+
+            retryOnExceptionIf { request, cause ->
+                cause is IOException ||
+                        cause is SerializationException ||
+                        cause is ServerResponseException ||
+                        cause is ClientRequestException ||
+                        cause is ResponseException
+            }
         }
-    }
 
     install(Auth) {
         flags.apiSecret?.let { secret ->
